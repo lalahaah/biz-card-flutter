@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -9,6 +10,16 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   TextEditingController introduceController = TextEditingController();
+
+  ///자기소개 수정 모드 상태
+  bool isEditMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 위젯이 처음 실행되었을 때 이곳을 호출합니다!
+    getIntroduceData();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -163,17 +174,64 @@ class _MainScreenState extends State<MainScreen> {
             ),
 
             ///자기소개 입력 필드
-            Container(
-              margin: EdgeInsets.only(left: 30, top: 16),
-              child: Text(
-                '자기소개',
-                style: TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  margin: EdgeInsets.only(left: 30, top: 16),
+                  child: Text(
+                    '자기소개',
+                    style:
+                        TextStyle(fontSize: 18.0, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                GestureDetector(
+                  child: Container(
+                    margin: EdgeInsets.only(right: 30, top: 16),
+                    child: Icon(
+                      Icons.mode_edit,
+                      color:
+                          isEditMode == true ? Colors.blueAccent : Colors.black,
+                      size: 24,
+                    ),
+                  ),
+                  onTap: () async {
+                    if (isEditMode == false) {
+                      setState(() {
+                        //update widget
+                        isEditMode = true;
+                      });
+                    } else {
+                      //입력 필드 값이 비어있는지 체크(empty check!)
+                      if (introduceController.text.isEmpty) {
+                        // snackbar 메시지로 사용자에게 안내하기
+                        var snackBar = SnackBar(
+                          content: Text('자기소개 입력 값이 비어 있습니다.'),
+                          duration: Duration(seconds: 2),
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(snackBar);
+                        return; //하단의 로직들을 수행하지 않고 여기서 메서드 종료
+                      }
+
+                      // 저장 로직 구현 !!
+                      var sharedPref = await SharedPreferences.getInstance();
+                      sharedPref.setString(
+                          'introduce', introduceController.text);
+
+                      setState(() {
+                        // update widget
+                        isEditMode = false;
+                      });
+                    }
+                  },
+                ),
+              ],
             ),
             Container(
               margin: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
               child: TextField(
                 controller: introduceController,
+                enabled: isEditMode,
                 maxLines: 4,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
@@ -189,5 +247,12 @@ class _MainScreenState extends State<MainScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> getIntroduceData() async {
+    //기존에 저장된 자기소개 데이터가 있다면 로드해오기!
+    var sharedPref = await SharedPreferences.getInstance();
+    String introduceMsg = sharedPref.getString('introduce').toString();
+    introduceController.text = introduceMsg ?? "";
   }
 }
